@@ -29,7 +29,7 @@
 <!-- ABOUT THE PROJECT -->
 ## PyOne Racing
 
-This is a project I created in order to enahnce my Python skills.
+This is a project I created in order to enhance my Python skills.
 
 ### Built With
 
