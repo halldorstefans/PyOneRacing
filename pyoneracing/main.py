@@ -1,111 +1,133 @@
-import pygame, random, math
+import pygame
 
-# Initialize pygame
+# import random for random numbers!
+import random
+
+
+class Player(pygame.sprite.Sprite):
+    def __init__(self):
+        super(Player, self).__init__()
+        self.surf = pygame.image.load("images/RacingCar_1.png")
+        self.rect = self.surf.get_rect()
+        self.rect.left = 370
+        self.rect.right = 370
+        self.rect.top = 550
+        self.rect.bottom = 550
+
+    def update(self, pressed_keys):
+        if pressed_keys[pygame.K_UP]:
+            self.rect.move_ip(0, -5)
+        if pressed_keys[pygame.K_DOWN]:
+            self.rect.move_ip(0, 5)
+        if pressed_keys[pygame.K_LEFT]:
+            self.rect.move_ip(-5, 0)
+        if pressed_keys[pygame.K_RIGHT]:
+            self.rect.move_ip(5, 0)
+
+        # Keep player on the screen
+        if self.rect.left < 140:
+            self.rect.left = 140
+        elif self.rect.right > 650:
+            self.rect.right = 650
+        if self.rect.top <= 0:
+            self.rect.top = 0
+        elif self.rect.bottom >= 600:
+            self.rect.bottom = 600
+
+
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self):
+        super(Enemy, self).__init__()
+        self.surf = pygame.image.load("images/RacingCar_2.png")
+        self.rect = self.surf.get_rect(
+            center=(random.randint(180, 615), random.randint(-650, -50))
+
+        )
+        self.speed = random.randint(2, 4)
+
+    def update(self):
+        self.rect.move_ip(0, self.speed)
+        if self.rect.bottom > 600:
+            self.kill()
+
+def show_score():
+    font = pygame.font.Font('freesansbold.ttf', 32)
+    score = font.render("Score : " + str(score_value), True, (255, 255, 255))
+    screen.blit(score, (10, 10))
+
+
+def game_over(score_value):
+    global final_score
+    if score_value != 0:
+        final_score = score_value
+    over_font = pygame.font.Font('freesansbold.ttf', 64)
+    score_font = pygame.font.Font('freesansbold.ttf', 32)
+    over_text = over_font.render("GAME OVER", True, (255, 255, 255))
+    score_text = score_font.render("Final score: " + str(final_score), True, (255, 255, 255))
+    screen.blit(over_text, (200, 250))
+    screen.blit(score_text, (275, 350))
+    return 0
+
+# initialize pygame
 pygame.init()
 
-# Create screen
+# create the screen object
+# here we pass it a size of 800x600
 screen = pygame.display.set_mode((800, 600))
 
-# Background
-background = pygame.image.load('images/BackgroundRoad.png')
+# Create a custom event for adding a new enemy.
+ADDENEMY = pygame.USEREVENT + 1
+pygame.time.set_timer(ADDENEMY, 800)
 
-# Title and Icon
-pygame.display.set_caption("images/PyOneRacing")
+# create our 'player', right now he's just a rectangle
+player = Player()
+
+background = pygame.image.load('images/BackgroundRoad.png')
+pygame.display.set_caption("PyOneRacing")
 icon = pygame.image.load('images/IconCar.png') # Icon made by <a href="https://www.flaticon.com/authors/nikita-golubev" title="Nikita Golubev">Nikita Golubev</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a>
 pygame.display.set_icon(icon)
 
-# Race cars - Icons made by <a href="https://www.flaticon.com/authors/smashicons" title="Smashicons">Smashicons</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a>
-playerCarImg = pygame.image.load('images/RacingCar1.png')
-playerX = 370
-playerY = 450
-playerX_change = 0
+final_score = 0
+score_value = 0
 
-# Enemy
-enemyImg = []
-enemyX = []
-enemyY = []
-enemyY_change = []
-num_of_enemies = 2
+enemies = pygame.sprite.Group()
+all_sprites = pygame.sprite.Group()
+all_sprites.add(player)
 
-for i in range(num_of_enemies):
-    enemyImg.append(pygame.image.load('images/RacingCar2.png'))
-    enemyX.append(random.randint(120, 550))
-    enemyY.append(-50)
-    enemyY_change.append(4)
-
-
-def game_over():
-    game_over_text()
-    return 0
-
-def game_over_text():
-    over_font = pygame.font.Font('freesansbold.ttf', 64)
-    over_text = over_font.render("GAME OVER", True, (255, 255, 255))
-    screen.blit(over_text, (200, 250))
-
-def player(x,y):
-    screen.blit(playerCarImg, (x, y))
-
-def enemy(x, y, i):
-    screen.blit(enemyImg[i], (x, y))
-
-def isCollision(enemyX, enemyY, playerX, playerY):
-    distance = math.sqrt(math.pow(enemyX - playerX, 2) + (math.pow(enemyY - playerY, 2)))
-    if distance < 90:
-        return True
-    else:
-        return False
-
-# Loop game
 running = True
 
 while running:
-    # RGB - Red, Green, Blue
-    screen.fill((0,0,0))
-    # Background Image
-    screen.blit(background, (0, 0))
     for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
-                playerX_change = -5
-            if event.key == pygame.K_RIGHT:
-                playerX_change = 5
+            if event.key == pygame.K_ESCAPE:
+                running = False
             if event.key == pygame.K_r:
-                num_of_enemies = 2
+                player = Player()
+                all_sprites.add(player)
+        elif event.type == pygame.QUIT:
+            running = False        
+        elif(event.type == ADDENEMY):
+            new_enemy = Enemy()
+            enemies.add(new_enemy)
+            all_sprites.add(new_enemy)
+    screen.blit(background, (0, 0))
+    pressed_keys = pygame.key.get_pressed()
+    if all_sprites.has(player):
+        player.update(pressed_keys)
+    enemies.update()
+    for entity in all_sprites:
+        screen.blit(entity.surf, entity.rect)
 
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
-                playerX_change = 0
-        
-    playerX += playerX_change
-    if playerX <= 120:
-        playerX = 120
-    elif playerX >= 550:
-        playerX = 550
+    show_score()
 
-    for i in range(num_of_enemies):
+    if pygame.sprite.spritecollideany(player, enemies):
+        player.kill()
+        game_over(score_value)
+        score_value = 0
+    
+    if not all_sprites.has(player):
+        game_over(score_value)
+    else:
+        score_value += 1
 
-        if enemyY[i] > 500:
-            enemyX[i] = random.randint(120, 550)
-            enemyY[i] = -50
-            enemy(enemyX[i], enemyY[i], i)
-            break
-
-        collision = isCollision(enemyX[i], enemyY[i], playerX, playerY)
-        if collision:         
-            for j in range(num_of_enemies):
-                enemyY[j] = 2000
-            num_of_enemies = game_over()
-
-        enemyY[i] += enemyY_change[i]
-
-        enemy(enemyX[i], enemyY[i], i)
-
-    if num_of_enemies == 0:
-        game_over_text()
-
-    player(playerX, playerY)
-    pygame.display.update()
+    pygame.display.flip()
