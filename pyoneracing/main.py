@@ -1,16 +1,36 @@
-import pygame
+import pygame, random, sys
 
-# import random for random numbers!
-import random
+# Initialize pygame
+pygame.init()
 
+# Create the screen object
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+
+# Set background, caption, icon and sounds
+background = pygame.image.load('resources/images/BackgroundRoad.png')
+pygame.display.set_caption("PyOneRacing")
+icon = pygame.image.load('resources/images/IconCar.png')
+pygame.display.set_icon(icon)
+pygame.mixer.music.load("resources/sounds/cinematicTrack.wav")
+pygame.mixer.music.play(-1)
+explosionSound = pygame.mixer.Sound("resources/sounds/bump.wav")
+
+# Initialize scores and other properties
+final_score = 0
+score_value = 0
+top_score = 0
+fontType = 'freesansbold.ttf'
+newEnemyTimer = 800
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super(Player, self).__init__()
-        self.surf = pygame.image.load("images/RacingCar_1.png")
+        self.surf = pygame.image.load("resources/images/RacingCar_1.png")
         self.rect = self.surf.get_rect()
-        self.rect.left = 370
-        self.rect.right = 370
+        self.rect.left = 440
+        self.rect.right = 440
         self.rect.top = 550
         self.rect.bottom = 550
 
@@ -38,11 +58,8 @@ class Player(pygame.sprite.Sprite):
 class Enemy(pygame.sprite.Sprite):
     def __init__(self):
         super(Enemy, self).__init__()
-        self.surf = pygame.image.load("images/RacingCar_2.png")
-        self.rect = self.surf.get_rect(
-            center=(random.randint(180, 615), random.randint(-650, -50))
-
-        )
+        self.surf = pygame.image.load("resources/images/RacingCar_2.png")
+        self.rect = self.surf.get_rect(center=(random.randint(180, 615), random.randint(-650, -50)))
         self.speed = random.randint(2, 4)
 
     def update(self):
@@ -50,62 +67,79 @@ class Enemy(pygame.sprite.Sprite):
         if self.rect.bottom > 600:
             self.kill()
 
+def terminate():
+    pygame.quit()
+    sys.exit()
+
 def show_score():
-    font = pygame.font.Font('freesansbold.ttf', 32)
+    font = pygame.font.Font(fontType, 32)
     score = font.render("Score : " + str(score_value), True, (255, 255, 255))
     screen.blit(score, (10, 10))
 
 
 def game_over(score_value):
     global final_score
+    global top_score
     if score_value != 0:
         final_score = score_value
-    over_font = pygame.font.Font('freesansbold.ttf', 64)
-    score_font = pygame.font.Font('freesansbold.ttf', 32)
+        if top_score < final_score:
+            top_score = final_score
+    over_font = pygame.font.Font(fontType, 64)
+    score_font = pygame.font.Font(fontType, 32)
+    restart_font = pygame.font.Font(fontType, 16)
     over_text = over_font.render("GAME OVER", True, (255, 255, 255))
     score_text = score_font.render("Final score: " + str(final_score), True, (255, 255, 255))
+    topScore_text = score_font.render("Top score: " + str(top_score), True, (255, 255, 255))
+    restart_text = restart_font.render("Press 'R' to restart the game", True, (255, 255, 255))
     screen.blit(over_text, (200, 250))
-    screen.blit(score_text, (275, 350))
+    screen.blit(score_text, (280, 350))
+    screen.blit(topScore_text, (280, 200))
+    screen.blit(restart_text, (295, 425))
     return 0
 
-# initialize pygame
-pygame.init()
+def waitForPlayerToPressKey():
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    terminate()
+                return
 
-# create the screen object
-# here we pass it a size of 800x600
-screen = pygame.display.set_mode((800, 600))
+def StartScreen():
+    over_font = pygame.font.Font(fontType, 24)
+    over_text = over_font.render("Press any key to start the game", True, (255, 255, 255))
+    screen.blit(over_text, (200, 250))
 
 # Create a custom event for adding a new enemy.
 ADDENEMY = pygame.USEREVENT + 1
-pygame.time.set_timer(ADDENEMY, 800)
+pygame.time.set_timer(ADDENEMY, newEnemyTimer)
 
-# create our 'player', right now he's just a rectangle
+# Create player
 player = Player()
-
-background = pygame.image.load('images/BackgroundRoad.png')
-pygame.display.set_caption("PyOneRacing")
-icon = pygame.image.load('images/IconCar.png') # Icon made by <a href="https://www.flaticon.com/authors/nikita-golubev" title="Nikita Golubev">Nikita Golubev</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a>
-pygame.display.set_icon(icon)
-
-final_score = 0
-score_value = 0
 
 enemies = pygame.sprite.Group()
 all_sprites = pygame.sprite.Group()
 all_sprites.add(player)
 
-running = True
+font = pygame.font.SysFont(None, 30)
+StartScreen()
+pygame.display.update()
+waitForPlayerToPressKey()
 
-while running:
+# Run game
+while True:
     for event in pygame.event.get():
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                running = False
+                terminate()
             if event.key == pygame.K_r:
                 player = Player()
                 all_sprites.add(player)
+                pygame.time.set_timer(ADDENEMY, newEnemyTimer)
         elif event.type == pygame.QUIT:
-            running = False        
+            terminate()
         elif(event.type == ADDENEMY):
             new_enemy = Enemy()
             enemies.add(new_enemy)
@@ -121,7 +155,12 @@ while running:
     show_score()
 
     if pygame.sprite.spritecollideany(player, enemies):
+        if all_sprites.has(player):            
+            explosionSound.play()
         player.kill()
+        for enemy in all_sprites:
+            enemy.kill()
+        pygame.time.set_timer(ADDENEMY, 0)
         game_over(score_value)
         score_value = 0
     
